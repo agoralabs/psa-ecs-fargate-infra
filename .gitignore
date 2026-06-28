@@ -1,0 +1,76 @@
+# ── Terraform ────────────────────────────────────────────────────────────────
+
+# Répertoire de travail Terraform (providers téléchargés)
+.terraform/
+
+# Fichiers d'état (contiennent des données sensibles)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Lock file des providers (à committer si vous voulez fixer les versions)
+# .terraform.lock.hcl
+
+# Plans Terraform
+*.tfplan
+*.plan
+
+# Fichiers de variables sensibles (ne jamais committer)
+*.tfvars.local
+secrets.tfvars
+secret.tfvars
+
+# Override files (utilisés localement pour surcharger des valeurs)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# ── Secrets & credentials ────────────────────────────────────────────────────
+
+.env
+.env.*
+!.env.example
+
+*.pem
+*.key
+*.p12
+*.pfx
+
+# AWS credentials
+.aws/
+
+# ── OS & éditeurs ─────────────────────────────────────────────────────────────
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# JetBrains (IntelliJ, WebStorm, etc.)
+.idea/
+
+# VS Code
+.vscode/
+!.vscode/extensions.json
+
+# ── Logs & temporaire ────────────────────────────────────────────────────────
+
+*.log
+*.tmp
+*.bak
+tmp/
+temp/
+
+# ── Scripts — exécutables générés ────────────────────────────────────────────
+
+# Conserver les scripts .sh sources mais ignorer les binaires compilés éventuels
+*.out
