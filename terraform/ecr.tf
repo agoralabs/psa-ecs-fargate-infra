@@ -1,9 +1,12 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# ecr.tf — Repos ECR, un par application
+# ecr.tf — Repos ECR
+# Un repo est créé par app sauf si ecr_repo_key est renseigné,
+# auquel cas l'app partage le repo de l'app désignée.
 # ─────────────────────────────────────────────────────────────────────────────
 
 resource "aws_ecr_repository" "app" {
-  for_each = var.apps
+  # Ne crée un repo que pour les apps sans ecr_repo_key
+  for_each = { for k, v in var.apps : k => v if v.ecr_repo_key == "" }
 
   name                 = each.value.name
   image_tag_mutability = "MUTABLE"
@@ -20,7 +23,7 @@ resource "aws_ecr_repository" "app" {
 
 # Lifecycle policy : conserver les 20 dernières images
 resource "aws_ecr_lifecycle_policy" "app" {
-  for_each = var.apps
+  for_each = { for k, v in var.apps : k => v if v.ecr_repo_key == "" }
 
   repository = aws_ecr_repository.app[each.key].name
 
@@ -38,4 +41,16 @@ resource "aws_ecr_lifecycle_policy" "app" {
       }
     ]
   })
+}
+
+locals {
+  # Résout l'URL ECR pour chaque app :
+  # - Si ecr_repo_key est vide → repo propre à l'app
+  # - Sinon → repo de l'app désignée par ecr_repo_key
+  ecr_repo_urls = {
+    for k, v in var.apps : k =>
+      v.ecr_repo_key == ""
+        ? aws_ecr_repository.app[k].repository_url
+        : aws_ecr_repository.app[v.ecr_repo_key].repository_url
+  }
 }

@@ -45,7 +45,7 @@ resource "aws_ecs_task_definition" "prod" {
   container_definitions = jsonencode([
     {
       name      = each.value.name
-      image     = "${aws_ecr_repository.app[each.key].repository_url}:latest"
+      image     = "${local.ecr_repo_urls[each.key]}:latest"
       essential = true
 
       portMappings = [
@@ -109,7 +109,7 @@ resource "aws_ecs_task_definition" "staging" {
   container_definitions = jsonencode([
     {
       name      = "${each.value.name}-staging"
-      image     = "${aws_ecr_repository.app[each.key].repository_url}:staging-latest"
+      image     = "${local.ecr_repo_urls[each.key]}:staging-latest"
       essential = true
 
       portMappings = [
@@ -164,9 +164,10 @@ resource "aws_ecs_service" "prod" {
   desired_count          = each.value.prod_desired_count
   launch_type            = "FARGATE"
   enable_execute_command = true
+  health_check_grace_period_seconds = 180
 
   network_configuration {
-    subnets          = data.aws_subnets.public.ids
+    subnets          = local.prod_subnets
     security_groups  = [aws_security_group.ecs_prod[each.key].id]
     assign_public_ip = true
   }
@@ -200,9 +201,10 @@ resource "aws_ecs_service" "staging" {
   desired_count          = each.value.staging_desired_count
   launch_type            = "FARGATE"
   enable_execute_command = true
+  health_check_grace_period_seconds = 180
 
   network_configuration {
-    subnets          = data.aws_subnets.public.ids
+    subnets          = local.staging_subnets
     security_groups  = [aws_security_group.ecs_staging[each.key].id]
     assign_public_ip = true
   }

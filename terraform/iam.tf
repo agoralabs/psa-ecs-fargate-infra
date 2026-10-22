@@ -89,6 +89,51 @@ resource "aws_iam_role_policy" "ecs_task_app" {
         Resource = "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter/*"
       },
       {
+        # Lecture du fichier .env depuis S3 au démarrage du conteneur (entrypoint)
+        Sid    = "S3EnvConfig"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:HeadObject"
+        ]
+        Resource = "arn:aws:s3:::${var.env_config_s3_bucket}/*"
+      },
+      {
+        # Accès en lecture/écriture aux buckets S3 applicatifs créés via create_app_bucket
+        Sid    = "S3AppBuckets"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket",
+          "s3:HeadObject"
+        ]
+        Resource = flatten([
+          for k, bucket in aws_s3_bucket.app_prod : [
+            bucket.arn,
+            "${bucket.arn}/*"
+          ]
+        ]),
+      },
+      {
+        Sid    = "S3AppBucketsStaging"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket",
+          "s3:HeadObject"
+        ]
+        Resource = flatten([
+          for k, bucket in aws_s3_bucket.app_staging : [
+            bucket.arn,
+            "${bucket.arn}/*"
+          ]
+        ]),
+      },
+      {
         Sid    = "ECSExec"
         Effect = "Allow"
         Action = [

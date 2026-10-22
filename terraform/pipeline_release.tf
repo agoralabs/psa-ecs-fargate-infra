@@ -14,7 +14,7 @@
 # ── CodeBuild : Tag Docker ────────────────────────────────────────────────────
 
 resource "aws_codebuild_project" "tag_docker" {
-  for_each = var.apps
+  for_each = { for k, v in var.apps : k => v if v.enable_release_pipeline }
 
   name          = "${each.value.name}-tag-docker"
   service_role  = aws_iam_role.codebuild.arn
@@ -31,7 +31,7 @@ resource "aws_codebuild_project" "tag_docker" {
 
     environment_variable {
       name  = "ECR_REPO_URL"
-      value = aws_ecr_repository.app[each.key].repository_url
+      value = local.ecr_repo_urls[each.key]
     }
     environment_variable {
       name  = "AWS_ACCOUNT_ID"
@@ -93,7 +93,7 @@ resource "aws_codebuild_project" "tag_docker" {
 # ── CodePipeline : Release (manuel) ──────────────────────────────────────────
 
 resource "aws_codepipeline" "release" {
-  for_each = var.apps
+  for_each = { for k, v in var.apps : k => v if v.enable_release_pipeline }
 
   name          = "${each.value.name}-release-pipeline"
   role_arn      = aws_iam_role.codepipeline.arn

@@ -109,7 +109,7 @@ resource "aws_lb_listener_rule" "staging" {
   }
 }
 
-# ── Listener Rule HTTP → HTTPS redirect ──────────────────────────────────────
+# ── Listener Rules HTTP → HTTPS redirect ──────────────────────────────────────
 # Si le listener HTTP 80 n'a pas déjà une règle de redirect globale, on peut
 # en ajouter une par app. Commenter si l'ALB a déjà un redirect par défaut.
 
@@ -129,3 +129,22 @@ resource "aws_lb_listener_rule" "staging" {
 #     host_header { values = [each.value.prod_domain] }
 #   }
 # }
+
+# ── Attachement des certificats ACM au listener HTTPS partagé ────────────────
+# L'ALB fait le SNI matching au niveau du listener (pas de la rule).
+# Sans cette ressource, l'ALB présente son certificat par défaut pour tous les
+# domaines inconnus → NET::ERR_CERT_COMMON_NAME_INVALID sur les domaines custom.
+
+resource "aws_lb_listener_certificate" "prod" {
+  for_each = var.apps
+
+  listener_arn    = data.aws_lb_listener.https.arn
+  certificate_arn = aws_acm_certificate_validation.prod[each.key].certificate_arn
+}
+
+resource "aws_lb_listener_certificate" "staging" {
+  for_each = var.apps
+
+  listener_arn    = data.aws_lb_listener.https.arn
+  certificate_arn = aws_acm_certificate_validation.staging[each.key].certificate_arn
+}

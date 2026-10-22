@@ -79,7 +79,7 @@ resource "aws_codebuild_project" "deploy_staging" {
 
     environment_variable {
       name  = "ECR_REPO_URL"
-      value = aws_ecr_repository.app[each.key].repository_url
+      value = local.ecr_repo_urls[each.key]
     }
     environment_variable {
       name  = "AWS_DEFAULT_REGION"
@@ -172,7 +172,7 @@ resource "aws_codebuild_project" "deploy_prod" {
 
     environment_variable {
       name  = "ECR_REPO_URL"
-      value = aws_ecr_repository.app[each.key].repository_url
+      value = local.ecr_repo_urls[each.key]
     }
     environment_variable {
       name  = "AWS_DEFAULT_REGION"

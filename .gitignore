@@ -74,3 +74,6 @@ temp/
 
 # Conserver les scripts .sh sources mais ignorer les binaires compilés éventuels
 *.out
+
+qchat
+log.txt

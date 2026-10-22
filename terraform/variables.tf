@@ -51,6 +51,14 @@ variable "ecs_cluster_name" {
   default     = "psa-nestjs-cluster"
 }
 
+# ── S3 — bucket de configuration ─────────────────────────────────────────────
+
+variable "env_config_s3_bucket" {
+  description = "Nom du bucket S3 contenant les fichiers .env des applications (ex: makadi-app-config)"
+  type        = string
+  default     = "makadi-app-config"
+}
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Applications NestJS à déployer
 # Chaque entrée du map correspond à une application indépendante.
@@ -71,6 +79,11 @@ variable "apps" {
     # Sous-domaines pour chaque environnement
     prod_domain    = string
     staging_domain = string
+
+    # Hosted zone Route 53 pour cette application
+    # Laisser à "" pour utiliser la hosted zone globale (var.hosted_zone_name)
+    # Renseigner si l'app utilise un domaine différent (ex: "vtccontrol.com")
+    hosted_zone_name = string
 
     # Port exposé par le conteneur
     container_port = number
@@ -103,6 +116,52 @@ variable "apps" {
     # Utilisé par l'entrypoint du conteneur pour charger la configuration
     prod_env_s3_path    = string
     staging_env_s3_path = string
+
+    # ── Pipelines optionnels ──────────────────────────────────────────────────
+    # Mettre à false pour ne pas créer le pipeline correspondant
+    enable_build_pipeline   = bool
+    enable_release_pipeline = bool
+
+    # Nom du script entrypoint dans le conteneur Docker
+    # Exemples : "entrypoint.sh", "entrypoint-worker.sh"
+    entrypoint_script = string
+
+    # Clé ECR partagée (optionnel) — si renseignée, l'app réutilise le repo ECR
+    # de l'app désignée au lieu d'en créer un nouveau.
+    # Exemple : pour api-vtccontrol-worker, mettre "api-vtccontrol"
+    # Laisser à "" pour créer un repo ECR dédié (comportement par défaut)
+    ecr_repo_key = string
+
+    # Type de machine CodeBuild pour le pipeline de build
+    # BUILD_GENERAL1_SMALL  = 3 Go RAM  (défaut, moins cher)
+    # BUILD_GENERAL1_MEDIUM = 7 Go RAM  (pour les projets gourmands : TSOA, tsc lourd, etc.)
+    # BUILD_GENERAL1_LARGE  = 15 Go RAM (rare, gros monorepos)
+    build_compute_type = string
+
+    # ── Buckets S3 applicatifs (optionnel) ───────────────────────────────────
+    # Mettre create_app_bucket = true pour créer un bucket prod ET un bucket staging.
+    # Si les noms sont vides (""), les noms par défaut seront :
+    #   prod    → "<name>-prod-data"
+    #   staging → "<name>-staging-data"
+    create_app_bucket       = bool
+    app_bucket_name_prod    = string
+    app_bucket_name_staging = string
+
+    # ── Autoscaling ───────────────────────────────────────────────────────────
+    # Nombre minimum et maximum de tâches ECS par environnement
+    prod_autoscaling_min = number
+    prod_autoscaling_max = number
+
+    staging_autoscaling_min = number
+    staging_autoscaling_max = number
+
+    # Seuils de déclenchement du scaling (en %)
+    # CPU : scale-out si > cible, scale-in si < cible pendant cooldown
+    prod_autoscaling_cpu_target    = number
+    prod_autoscaling_memory_target = number
+
+    staging_autoscaling_cpu_target    = number
+    staging_autoscaling_memory_target = number
   }))
 
   default = {}

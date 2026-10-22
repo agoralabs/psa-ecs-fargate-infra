@@ -71,4 +71,15 @@ data "aws_subnets" "public" {
 locals {
   account_id = data.aws_caller_identity.current.account_id
   vpc_id     = data.aws_vpc.main.id
+  
+  # Subnets spécifiques pour staging (limité aux 2 subnets actuels dans AWS)
+  staging_subnets = [
+    "subnet-092153fd436ef0ee2",
+    "subnet-06e5ed24a84c595ea"
+  ]
+
+  prod_subnets = [
+    "subnet-092153fd436ef0ee2",
+    "subnet-06e5ed24a84c595ea"
+  ]
 }
