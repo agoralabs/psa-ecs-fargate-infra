@@ -23,14 +23,18 @@ resource "aws_security_group" "ecs_prod" {
   description = "SG ECS Fargate ${each.value.name} prod"
   vpc_id      = local.vpc_id
 
-  ingress {
-    description = "Traffic from ALB"
-    from_port   = each.value.container_port
-    to_port     = each.value.container_port
-    protocol    = "tcp"
-    # Fallback CIDR si le SG de l'ALB n'est pas taggué
-    cidr_blocks = length(data.aws_security_groups.alb.ids) == 0 ? ["0.0.0.0/0"] : []
-    security_groups = length(data.aws_security_groups.alb.ids) > 0 ? data.aws_security_groups.alb.ids : []
+  dynamic "ingress" {
+    for_each = each.value.enable_alb ? [true] : []
+
+    content {
+      description = "Traffic from ALB"
+      from_port   = each.value.container_port
+      to_port     = each.value.container_port
+      protocol    = "tcp"
+      # Fallback CIDR si le SG de l'ALB n'est pas taggué
+      cidr_blocks     = length(data.aws_security_groups.alb.ids) == 0 ? ["0.0.0.0/0"] : []
+      security_groups = length(data.aws_security_groups.alb.ids) > 0 ? data.aws_security_groups.alb.ids : []
+    }
   }
 
   egress {
@@ -55,13 +59,17 @@ resource "aws_security_group" "ecs_staging" {
   description = "SG ECS Fargate ${each.value.name} staging"
   vpc_id      = local.vpc_id
 
-  ingress {
-    description = "Traffic from ALB"
-    from_port   = each.value.container_port
-    to_port     = each.value.container_port
-    protocol    = "tcp"
-    cidr_blocks = length(data.aws_security_groups.alb.ids) == 0 ? ["0.0.0.0/0"] : []
-    security_groups = length(data.aws_security_groups.alb.ids) > 0 ? data.aws_security_groups.alb.ids : []
+  dynamic "ingress" {
+    for_each = each.value.enable_alb ? [true] : []
+
+    content {
+      description     = "Traffic from ALB"
+      from_port       = each.value.container_port
+      to_port         = each.value.container_port
+      protocol        = "tcp"
+      cidr_blocks     = length(data.aws_security_groups.alb.ids) == 0 ? ["0.0.0.0/0"] : []
+      security_groups = length(data.aws_security_groups.alb.ids) > 0 ? data.aws_security_groups.alb.ids : []
+    }
   }
 
   egress {

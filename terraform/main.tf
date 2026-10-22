@@ -71,7 +71,17 @@ data "aws_subnets" "public" {
 locals {
   account_id = data.aws_caller_identity.current.account_id
   vpc_id     = data.aws_vpc.main.id
-  
+
+  alb_apps = {
+    for key, app in var.apps : key => app
+    if app.enable_alb
+  }
+
+  autoscaling_apps = {
+    for key, app in var.apps : key => app
+    if app.enable_autoscaling
+  }
+
   # Subnets spécifiques pour staging (limité aux 2 subnets actuels dans AWS)
   staging_subnets = [
     "subnet-092153fd436ef0ee2",

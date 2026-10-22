@@ -36,17 +36,25 @@ output "staging_service_names" {
   }
 }
 
+output "ewatrack_ingestion_security_group_ids" {
+  description = "Security groups ECS à autoriser sur le SG MemoryDB pour l'ingestion Ewatrack"
+  value = {
+    staging = aws_security_group.ecs_staging["api-ewatrack-ingestion"].id
+    prod    = aws_security_group.ecs_prod["api-ewatrack-ingestion"].id
+  }
+}
+
 output "prod_urls" {
   description = "URLs de production par application"
   value = {
-    for k, app in var.apps : k => "https://${app.prod_domain}"
+    for k, app in local.alb_apps : k => "https://${app.prod_domain}"
   }
 }
 
 output "staging_urls" {
   description = "URLs de staging par application"
   value = {
-    for k, app in var.apps : k => "https://${app.staging_domain}"
+    for k, app in local.alb_apps : k => "https://${app.staging_domain}"
   }
 }
 

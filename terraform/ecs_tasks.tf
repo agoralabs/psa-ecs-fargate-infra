@@ -43,27 +43,27 @@ resource "aws_ecs_task_definition" "prod" {
   task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([
-    {
+    merge({
       name      = each.value.name
       image     = "${local.ecr_repo_urls[each.key]}:latest"
       essential = true
 
-      portMappings = [
+      portMappings = each.value.enable_alb ? [
         {
           containerPort = each.value.container_port
           protocol      = "tcp"
         }
-      ]
+      ] : []
 
       secrets = []
 
       environment = [
-        { name = "APP_NAME",           value = each.value.name },
-        { name = "ENVIRONMENT",        value = "prod" },
+        { name = "APP_NAME", value = each.value.name },
+        { name = "ENVIRONMENT", value = "prod" },
         { name = "AWS_DEFAULT_REGION", value = var.aws_region },
-        { name = "NODE_ENV",           value = "production" },
-        { name = "PORT",               value = tostring(each.value.container_port) },
-        { name = "ENV_S3_PATH",        value = each.value.prod_env_s3_path }
+        { name = "NODE_ENV", value = "production" },
+        { name = "PORT", value = tostring(each.value.container_port) },
+        { name = "ENV_S3_PATH", value = each.value.prod_env_s3_path }
       ]
 
       logConfiguration = {
@@ -79,7 +79,9 @@ resource "aws_ecs_task_definition" "prod" {
       linuxParameters = {
         initProcessEnabled = true
       }
-    }
+      }, each.value.runtime_entrypoint != "" ? {
+      entryPoint = [each.value.runtime_entrypoint]
+    } : {})
   ])
 
   # lifecycle ignore_changes supprimé sur container_definitions :
@@ -107,27 +109,27 @@ resource "aws_ecs_task_definition" "staging" {
   task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([
-    {
+    merge({
       name      = "${each.value.name}-staging"
       image     = "${local.ecr_repo_urls[each.key]}:staging-latest"
       essential = true
 
-      portMappings = [
+      portMappings = each.value.enable_alb ? [
         {
           containerPort = each.value.container_port
           protocol      = "tcp"
         }
-      ]
+      ] : []
 
       secrets = []
 
       environment = [
-        { name = "APP_NAME",           value = each.value.name },
-        { name = "ENVIRONMENT",        value = "staging" },
+        { name = "APP_NAME", value = each.value.name },
+        { name = "ENVIRONMENT", value = "staging" },
         { name = "AWS_DEFAULT_REGION", value = var.aws_region },
-        { name = "NODE_ENV",           value = "staging" },
-        { name = "PORT",               value = tostring(each.value.container_port) },
-        { name = "ENV_S3_PATH",        value = each.value.staging_env_s3_path }
+        { name = "NODE_ENV", value = "staging" },
+        { name = "PORT", value = tostring(each.value.container_port) },
+        { name = "ENV_S3_PATH", value = each.value.staging_env_s3_path }
       ]
 
       logConfiguration = {
@@ -142,7 +144,9 @@ resource "aws_ecs_task_definition" "staging" {
       linuxParameters = {
         initProcessEnabled = true
       }
-    }
+      }, each.value.runtime_entrypoint != "" ? {
+      entryPoint = [each.value.runtime_entrypoint]
+    } : {})
   ])
 
   # lifecycle ignore_changes supprimé — voir commentaire task def prod.
@@ -158,13 +162,24 @@ resource "aws_ecs_task_definition" "staging" {
 resource "aws_ecs_service" "prod" {
   for_each = var.apps
 
-  name                   = "${each.value.name}-prod-service"
-  cluster                = aws_ecs_cluster.main.id
-  task_definition        = aws_ecs_task_definition.prod[each.key].arn
-  desired_count          = each.value.prod_desired_count
-  launch_type            = "FARGATE"
-  enable_execute_command = true
-  health_check_grace_period_seconds = 180
+  name                               = "${each.value.name}-prod-service"
+  cluster                            = aws_ecs_cluster.main.id
+  task_definition                    = aws_ecs_task_definition.prod[each.key].arn
+  desired_count                      = each.value.prod_desired_count
+  launch_type                        = "FARGATE"
+  enable_execute_command             = true
+  health_check_grace_period_seconds  = 180
+  deployment_minimum_healthy_percent = each.value.deployment_minimum_healthy_percent
+  deployment_maximum_percent         = each.value.deployment_maximum_percent
+
+  dynamic "deployment_circuit_breaker" {
+    for_each = each.value.enable_deployment_circuit_breaker ? [true] : []
+
+    content {
+      enable   = true
+      rollback = true
+    }
+  }
 
   network_configuration {
     subnets          = local.prod_subnets
@@ -172,10 +187,14 @@ resource "aws_ecs_service" "prod" {
     assign_public_ip = true
   }
 
-  load_balancer {
-    target_group_arn = aws_lb_target_group.prod[each.key].arn
-    container_name   = each.value.name
-    container_port   = each.value.container_port
+  dynamic "load_balancer" {
+    for_each = each.value.enable_alb ? [true] : []
+
+    content {
+      target_group_arn = aws_lb_target_group.prod[each.key].arn
+      container_name   = each.value.name
+      container_port   = each.value.container_port
+    }
   }
 
   depends_on = [aws_lb_listener_rule.prod]
@@ -195,13 +214,24 @@ resource "aws_ecs_service" "prod" {
 resource "aws_ecs_service" "staging" {
   for_each = var.apps
 
-  name                   = "${each.value.name}-staging-service"
-  cluster                = aws_ecs_cluster.main.id
-  task_definition        = aws_ecs_task_definition.staging[each.key].arn
-  desired_count          = each.value.staging_desired_count
-  launch_type            = "FARGATE"
-  enable_execute_command = true
-  health_check_grace_period_seconds = 180
+  name                               = "${each.value.name}-staging-service"
+  cluster                            = aws_ecs_cluster.main.id
+  task_definition                    = aws_ecs_task_definition.staging[each.key].arn
+  desired_count                      = each.value.staging_desired_count
+  launch_type                        = "FARGATE"
+  enable_execute_command             = true
+  health_check_grace_period_seconds  = 180
+  deployment_minimum_healthy_percent = each.value.deployment_minimum_healthy_percent
+  deployment_maximum_percent         = each.value.deployment_maximum_percent
+
+  dynamic "deployment_circuit_breaker" {
+    for_each = each.value.enable_deployment_circuit_breaker ? [true] : []
+
+    content {
+      enable   = true
+      rollback = true
+    }
+  }
 
   network_configuration {
     subnets          = local.staging_subnets
@@ -209,10 +239,14 @@ resource "aws_ecs_service" "staging" {
     assign_public_ip = true
   }
 
-  load_balancer {
-    target_group_arn = aws_lb_target_group.staging[each.key].arn
-    container_name   = "${each.value.name}-staging"
-    container_port   = each.value.container_port
+  dynamic "load_balancer" {
+    for_each = each.value.enable_alb ? [true] : []
+
+    content {
+      target_group_arn = aws_lb_target_group.staging[each.key].arn
+      container_name   = "${each.value.name}-staging"
+      container_port   = each.value.container_port
+    }
   }
 
   depends_on = [aws_lb_listener_rule.staging]

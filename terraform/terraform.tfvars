@@ -501,7 +501,8 @@ apps = {
     enable_release_pipeline = false
 
     # Nom du script entrypoint dans le conteneur (ex: entrypoint-worker.sh)
-    entrypoint_script = "entrypoint-worker.sh"
+    entrypoint_script  = "entrypoint-worker.sh"
+    runtime_entrypoint = "/entrypoint-worker.sh"
 
     # Repo ECR partagé : "" = créer un repo dédié (défaut)
     ecr_repo_key = "api-ewatrack"
@@ -531,6 +532,58 @@ apps = {
 
     staging_autoscaling_cpu_target    = 80
     staging_autoscaling_memory_target = 85
+  }
+
+  "api-ewatrack-ingestion" = {
+    name           = "api-ewatrack-ingestion"
+    github_repo_id = "psa-commits/api-ewatrack"
+    build_branch   = "staging"
+
+    container_port = 3000
+
+    prod_cpu    = "256"
+    prod_memory = "512"
+
+    staging_cpu    = "256"
+    staging_memory = "512"
+
+    prod_desired_count    = 1
+    staging_desired_count = 1
+
+    prod_log_retention_days    = 1
+    staging_log_retention_days = 1
+
+    prod_env_s3_path    = "s3://makadi-app-config/api-ewatrack/prod/env.txt"
+    staging_env_s3_path = "s3://makadi-app-config/api-ewatrack/staging/env.txt"
+
+    enable_build_pipeline   = false
+    enable_release_pipeline = false
+    enable_alb              = false
+    enable_autoscaling      = false
+
+    entrypoint_script  = "entrypoint.sh"
+    runtime_entrypoint = "/entrypoint-ingestion.sh"
+    ecr_repo_key       = "api-ewatrack"
+    build_compute_type = "BUILD_GENERAL1_SMALL"
+
+    create_app_bucket       = false
+    app_bucket_name_prod    = ""
+    app_bucket_name_staging = ""
+
+    prod_autoscaling_min           = 1
+    prod_autoscaling_max           = 1
+    prod_autoscaling_cpu_target    = 80
+    prod_autoscaling_memory_target = 85
+
+    staging_autoscaling_min           = 1
+    staging_autoscaling_max           = 1
+    staging_autoscaling_cpu_target    = 80
+    staging_autoscaling_memory_target = 85
+
+    deployment_minimum_healthy_percent = 0
+    deployment_maximum_percent         = 100
+    enable_deployment_circuit_breaker  = true
+    wait_for_stable_deployment         = true
   }
 
   # ── Exemple d'une deuxième application ─────────────────────────────────────

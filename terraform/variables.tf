@@ -77,13 +77,13 @@ variable "apps" {
     build_branch = string
 
     # Sous-domaines pour chaque environnement
-    prod_domain    = string
-    staging_domain = string
+    prod_domain    = optional(string, "")
+    staging_domain = optional(string, "")
 
     # Hosted zone Route 53 pour cette application
     # Laisser à "" pour utiliser la hosted zone globale (var.hosted_zone_name)
     # Renseigner si l'app utilise un domaine différent (ex: "vtccontrol.com")
-    hosted_zone_name = string
+    hosted_zone_name = optional(string, "")
 
     # Port exposé par le conteneur
     container_port = number
@@ -100,11 +100,11 @@ variable "apps" {
     staging_desired_count = number
 
     # Health check path (NestJS: "/")
-    health_check_path = string
+    health_check_path = optional(string, "")
 
     # Priorité des listener rules ALB (doit être unique par listener)
-    prod_rule_priority    = number
-    staging_rule_priority = number
+    prod_rule_priority    = optional(number, 0)
+    staging_rule_priority = optional(number, 0)
 
     # Rétention des logs CloudWatch en jours
     # Valeurs acceptées : 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653
@@ -119,12 +119,20 @@ variable "apps" {
 
     # ── Pipelines optionnels ──────────────────────────────────────────────────
     # Mettre à false pour ne pas créer le pipeline correspondant
-    enable_build_pipeline   = bool
-    enable_release_pipeline = bool
+    enable_build_pipeline      = bool
+    enable_release_pipeline    = bool
+    enable_alb                 = optional(bool, true)
+    enable_autoscaling         = optional(bool, true)
+    wait_for_stable_deployment = optional(bool, false)
 
     # Nom du script entrypoint dans le conteneur Docker
     # Exemples : "entrypoint.sh", "entrypoint-worker.sh"
-    entrypoint_script = string
+    entrypoint_script  = string
+    runtime_entrypoint = optional(string, "")
+
+    deployment_minimum_healthy_percent = optional(number, 100)
+    deployment_maximum_percent         = optional(number, 200)
+    enable_deployment_circuit_breaker  = optional(bool, false)
 
     # Clé ECR partagée (optionnel) — si renseignée, l'app réutilise le repo ECR
     # de l'app désignée au lieu d'en créer un nouveau.

@@ -6,7 +6,7 @@
 # ── Target Groups ─────────────────────────────────────────────────────────────
 
 resource "aws_lb_target_group" "prod" {
-  for_each = var.apps
+  for_each = local.alb_apps
 
   name        = "${each.value.name}-prod-tg"
   port        = each.value.container_port
@@ -31,7 +31,7 @@ resource "aws_lb_target_group" "prod" {
 }
 
 resource "aws_lb_target_group" "staging" {
-  for_each = var.apps
+  for_each = local.alb_apps
 
   name        = "${each.value.name}-stg-tg"
   port        = each.value.container_port
@@ -59,7 +59,7 @@ resource "aws_lb_target_group" "staging" {
 # Route le trafic vers le TG prod si Host = <prod_domain>
 
 resource "aws_lb_listener_rule" "prod" {
-  for_each = var.apps
+  for_each = local.alb_apps
 
   listener_arn = data.aws_lb_listener.https.arn
   priority     = each.value.prod_rule_priority
@@ -86,7 +86,7 @@ resource "aws_lb_listener_rule" "prod" {
 # Route le trafic vers le TG staging si Host = <staging_domain>
 
 resource "aws_lb_listener_rule" "staging" {
-  for_each = var.apps
+  for_each = local.alb_apps
 
   listener_arn = data.aws_lb_listener.https.arn
   priority     = each.value.staging_rule_priority
@@ -136,14 +136,14 @@ resource "aws_lb_listener_rule" "staging" {
 # domaines inconnus → NET::ERR_CERT_COMMON_NAME_INVALID sur les domaines custom.
 
 resource "aws_lb_listener_certificate" "prod" {
-  for_each = var.apps
+  for_each = local.alb_apps
 
   listener_arn    = data.aws_lb_listener.https.arn
   certificate_arn = aws_acm_certificate_validation.prod[each.key].certificate_arn
 }
 
 resource "aws_lb_listener_certificate" "staging" {
-  for_each = var.apps
+  for_each = local.alb_apps
 
   listener_arn    = data.aws_lb_listener.https.arn
   certificate_arn = aws_acm_certificate_validation.staging[each.key].certificate_arn

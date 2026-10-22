@@ -12,22 +12,22 @@ locals {
   # Ensemble dédupliqué des hosted zone names requis
   all_zone_names = toset(concat(
     [var.hosted_zone_name],
-    [for k, v in var.apps : v.hosted_zone_name if v.hosted_zone_name != ""]
+    [for k, v in local.alb_apps : v.hosted_zone_name if v.hosted_zone_name != ""]
   ))
 
   # Map app_key → zone_id effectif
   app_zone_ids = {
-    for k, v in var.apps : k =>
-      v.hosted_zone_name != "" && v.hosted_zone_name != var.hosted_zone_name
-        ? data.aws_route53_zone.extra[v.hosted_zone_name].zone_id
-        : data.aws_route53_zone.main.zone_id
+    for k, v in local.alb_apps : k =>
+    v.hosted_zone_name != "" && v.hosted_zone_name != var.hosted_zone_name
+    ? data.aws_route53_zone.extra[v.hosted_zone_name].zone_id
+    : data.aws_route53_zone.main.zone_id
   }
 }
 
 # Lookup des zones supplémentaires (hors zone globale)
 data "aws_route53_zone" "extra" {
   for_each = toset([
-    for k, v in var.apps : v.hosted_zone_name
+    for k, v in local.alb_apps : v.hosted_zone_name
     if v.hosted_zone_name != "" && v.hosted_zone_name != var.hosted_zone_name
   ])
 
@@ -38,7 +38,7 @@ data "aws_route53_zone" "extra" {
 # ── Certificats ACM production ────────────────────────────────────────────────
 
 resource "aws_acm_certificate" "prod" {
-  for_each = var.apps
+  for_each = local.alb_apps
 
   domain_name       = each.value.prod_domain
   validation_method = "DNS"
@@ -57,7 +57,7 @@ resource "aws_acm_certificate" "prod" {
 resource "aws_route53_record" "prod_cert_validation" {
   for_each = {
     for item in flatten([
-      for app_key, app in var.apps : [
+      for app_key, app in local.alb_apps : [
         for dvo in aws_acm_certificate.prod[app_key].domain_validation_options : {
           key     = "${app_key}-${dvo.domain_name}"
           app_key = app_key
@@ -78,7 +78,7 @@ resource "aws_route53_record" "prod_cert_validation" {
 }
 
 resource "aws_acm_certificate_validation" "prod" {
-  for_each = var.apps
+  for_each = local.alb_apps
 
   certificate_arn = aws_acm_certificate.prod[each.key].arn
 
@@ -88,7 +88,7 @@ resource "aws_acm_certificate_validation" "prod" {
 # ── Certificats ACM staging ───────────────────────────────────────────────────
 
 resource "aws_acm_certificate" "staging" {
-  for_each = var.apps
+  for_each = local.alb_apps
 
   domain_name       = each.value.staging_domain
   validation_method = "DNS"
@@ -107,7 +107,7 @@ resource "aws_acm_certificate" "staging" {
 resource "aws_route53_record" "staging_cert_validation" {
   for_each = {
     for item in flatten([
-      for app_key, app in var.apps : [
+      for app_key, app in local.alb_apps : [
         for dvo in aws_acm_certificate.staging[app_key].domain_validation_options : {
           key     = "${app_key}-${dvo.domain_name}"
           app_key = app_key
@@ -128,7 +128,7 @@ resource "aws_route53_record" "staging_cert_validation" {
 }
 
 resource "aws_acm_certificate_validation" "staging" {
-  for_each = var.apps
+  for_each = local.alb_apps
 
   certificate_arn = aws_acm_certificate.staging[each.key].arn
 
@@ -138,7 +138,7 @@ resource "aws_acm_certificate_validation" "staging" {
 # ── Enregistrements DNS (alias vers l'ALB) ────────────────────────────────────
 
 resource "aws_route53_record" "prod" {
-  for_each = var.apps
+  for_each = local.alb_apps
 
   zone_id = local.app_zone_ids[each.key]
   name    = each.value.prod_domain
@@ -152,7 +152,7 @@ resource "aws_route53_record" "prod" {
 }
 
 resource "aws_route53_record" "staging" {
-  for_each = var.apps
+  for_each = local.alb_apps
 
   zone_id = local.app_zone_ids[each.key]
   name    = each.value.staging_domain

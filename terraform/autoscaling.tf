@@ -10,7 +10,7 @@
 # ── Scalable Targets — Production ────────────────────────────────────────────
 
 resource "aws_appautoscaling_target" "prod" {
-  for_each = var.apps
+  for_each = local.autoscaling_apps
 
   service_namespace  = "ecs"
   resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.prod[each.key].name}"
@@ -25,7 +25,7 @@ resource "aws_appautoscaling_target" "prod" {
 # ── Scalable Targets — Staging ────────────────────────────────────────────────
 
 resource "aws_appautoscaling_target" "staging" {
-  for_each = var.apps
+  for_each = local.autoscaling_apps
 
   service_namespace  = "ecs"
   resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.staging[each.key].name}"
@@ -40,7 +40,7 @@ resource "aws_appautoscaling_target" "staging" {
 # ── Politique CPU — Production ────────────────────────────────────────────────
 
 resource "aws_appautoscaling_policy" "prod_cpu" {
-  for_each = var.apps
+  for_each = local.autoscaling_apps
 
   name               = "${each.value.name}-prod-cpu-scaling"
   service_namespace  = "ecs"
@@ -62,7 +62,7 @@ resource "aws_appautoscaling_policy" "prod_cpu" {
 # ── Politique Mémoire — Production ───────────────────────────────────────────
 
 resource "aws_appautoscaling_policy" "prod_memory" {
-  for_each = var.apps
+  for_each = local.autoscaling_apps
 
   name               = "${each.value.name}-prod-memory-scaling"
   service_namespace  = "ecs"
@@ -84,7 +84,7 @@ resource "aws_appautoscaling_policy" "prod_memory" {
 # ── Politique CPU — Staging ───────────────────────────────────────────────────
 
 resource "aws_appautoscaling_policy" "staging_cpu" {
-  for_each = var.apps
+  for_each = local.autoscaling_apps
 
   name               = "${each.value.name}-staging-cpu-scaling"
   service_namespace  = "ecs"
@@ -106,7 +106,7 @@ resource "aws_appautoscaling_policy" "staging_cpu" {
 # ── Politique Mémoire — Staging ───────────────────────────────────────────────
 
 resource "aws_appautoscaling_policy" "staging_memory" {
-  for_each = var.apps
+  for_each = local.autoscaling_apps
 
   name               = "${each.value.name}-staging-memory-scaling"
   service_namespace  = "ecs"

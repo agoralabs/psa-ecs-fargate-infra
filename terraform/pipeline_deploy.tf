@@ -122,14 +122,17 @@ resource "aws_codebuild_project" "deploy_staging" {
       version = "0.2"
       phases = {
         build = {
-          commands = [
+          commands = concat([
             "echo Deploying $ECR_REPO_URL:$IMAGE_TAG to staging ECS service $ECS_SERVICE",
             "aws ecs describe-task-definition --task-definition $TASK_FAMILY --region $AWS_DEFAULT_REGION --query 'taskDefinition' --output json > task-def.json",
             "python3 -c \"\nimport json\ntd = json.load(open('task-def.json'))\nimport os\nimage_tag = os.environ['IMAGE_TAG']\necr_url   = os.environ['ECR_REPO_URL']\ntd['containerDefinitions'][0]['image'] = f'{ecr_url}:{image_tag}'\nenvs = td['containerDefinitions'][0].get('environment', [])\nenvs = [e for e in envs if e['name'] not in ('IMAGE_TAG', 'ENVIRONMENT')]\nenvs.append({'name': 'IMAGE_TAG',    'value': image_tag})\nenvs.append({'name': 'ENVIRONMENT',  'value': 'staging'})\ntd['containerDefinitions'][0]['environment'] = envs\n[td.pop(k, None) for k in ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy','deregisteredAt']]\njson.dump(td, open('new-task-def.json','w'))\n\"",
             "NEW_TASK_DEF_ARN=$(aws ecs register-task-definition --region $AWS_DEFAULT_REGION --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)",
-            "aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --task-definition $NEW_TASK_DEF_ARN --region $AWS_DEFAULT_REGION",
+            "aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --task-definition $NEW_TASK_DEF_ARN --region $AWS_DEFAULT_REGION"
+            ], each.value.wait_for_stable_deployment ? [
+            "aws ecs wait services-stable --cluster $ECS_CLUSTER --services $ECS_SERVICE --region $AWS_DEFAULT_REGION"
+            ] : [], [
             "echo Staging deploy triggered for image: $IMAGE_TAG"
-          ]
+          ])
         }
       }
       artifacts = { files = ["**/*"] }
@@ -214,14 +217,17 @@ resource "aws_codebuild_project" "deploy_prod" {
       version = "0.2"
       phases = {
         build = {
-          commands = [
+          commands = concat([
             "echo Deploying $ECR_REPO_URL:$IMAGE_TAG to production ECS service $ECS_SERVICE",
             "aws ecs describe-task-definition --task-definition $TASK_FAMILY --region $AWS_DEFAULT_REGION --query 'taskDefinition' --output json > task-def.json",
             "python3 -c \"\nimport json\ntd = json.load(open('task-def.json'))\nimport os\nimage_tag = os.environ['IMAGE_TAG']\necr_url   = os.environ['ECR_REPO_URL']\ntd['containerDefinitions'][0]['image'] = f'{ecr_url}:{image_tag}'\nenvs = td['containerDefinitions'][0].get('environment', [])\nenvs = [e for e in envs if e['name'] not in ('IMAGE_TAG', 'ENVIRONMENT')]\nenvs.append({'name': 'IMAGE_TAG',    'value': image_tag})\nenvs.append({'name': 'ENVIRONMENT',  'value': 'production'})\ntd['containerDefinitions'][0]['environment'] = envs\n[td.pop(k, None) for k in ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy','deregisteredAt']]\njson.dump(td, open('new-task-def.json','w'))\n\"",
             "NEW_TASK_DEF_ARN=$(aws ecs register-task-definition --region $AWS_DEFAULT_REGION --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)",
-            "aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --task-definition $NEW_TASK_DEF_ARN --region $AWS_DEFAULT_REGION",
+            "aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --task-definition $NEW_TASK_DEF_ARN --region $AWS_DEFAULT_REGION"
+            ], each.value.wait_for_stable_deployment ? [
+            "aws ecs wait services-stable --cluster $ECS_CLUSTER --services $ECS_SERVICE --region $AWS_DEFAULT_REGION"
+            ] : [], [
             "echo Production deploy triggered for image: $IMAGE_TAG"
-          ]
+          ])
         }
       }
       artifacts = { files = ["**/*"] }
